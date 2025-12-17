@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal AI V2 - Advanced</title>
+    <style>
+        :root {
+          --bg-primary: #0a0a0a;
+          --bg-secondary: #111111;
+          --bg-tertiary: #1a1a1a;
+          --bg-hover: #222222;
+          --border-color: #2a2a2a;
+          --text-primary: #ffffff;
+          --text-secondary: #a0a0a0;
+          --text-muted: #666666;
+          --accent: #00ff00;
+          --accent-dim: rgba(0, 255, 0, 0.1);
+          --user-bg: #1a2f1a;
+          --assistant-bg: #1a1a2f;
+          --error: #ff4444;
+          --success: #00ff00;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Consolas', 'Monaco', monospace; background: var(--bg-primary); color: var(--text-primary); overflow: hidden; }
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: 300px; background: var(--bg-secondary); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border-color); }
+        .logo { color: var(--accent); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+        .version { font-size: 10px; color: var(--text-muted); }
+        .new-chat-btn { margin: 16px; padding: 12px; background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s; }
+        .new-chat-btn:hover { background: var(--accent); color: var(--bg-primary); }
+        .chat-list { flex: 1; overflow-y: auto; padding: 0 8px; }
+        .chat-item { padding: 12px; margin: 4px 0; border-radius: 8px; cursor: pointer; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+        .chat-item:hover { background: var(--bg-hover); }
+        .chat-item.active { background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent); }
+        .delete-btn { background: transparent; border: none; color: var(--error); cursor: pointer; padding: 4px 8px; border-radius: 4px; opacity: 0; transition: opacity 0.2s; }
+        .chat-item:hover .delete-btn { opacity: 1; }
+        .stats { padding: 12px 16px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); }
+        .stats-item { display: flex; justify-content: space-between; padding: 4px 0; }
+        
+        /* Main */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .messages-area { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+        .welcome-message { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--text-secondary); }
+        .welcome-message h2 { font-size: 32px; margin-bottom: 16px; color: var(--text-primary); }
+        .welcome-message .subtitle { font-size: 14px; margin-bottom: 24px; }
+        .features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 500px; margin-top: 24px; }
+        .feature-card { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; text-align: left; }
+        .feature-card h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+        .feature-card p { font-size: 12px; color: var(--text-muted); }
+        
+        /* Messages */
+        .message { max-width: 85%; border-radius: 12px; overflow: hidden; padding: 12px 16px; position: relative; }
+        .message.user { align-self: flex-end; background: var(--user-bg); border: 1px solid rgba(0, 255, 0, 0.3); }
+        .message.assistant { align-self: flex-start; background: var(--assistant-bg); border: 1px solid rgba(100, 100, 255, 0.3); }
+        .message-role { font-weight: 600; font-size: 11px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .message.user .message-role { color: var(--accent); }
+        .message.assistant .message-role { color: #6b8afd; }
+        .copy-code-btn { position: absolute; top: 8px; right: 8px; background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; opacity: 0; transition: all 0.2s; }
+        .message:hover .copy-code-btn { opacity: 1; }
+        .copy-code-btn:hover { background: var(--accent); color: var(--bg-primary); }
+        .message-content { white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.6; }
+        .command-output { margin-top: 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--text-secondary); max-height: 300px; overflow-y: auto; position: relative; }
+        .files-created { margin-top: 8px; padding: 8px; background: rgba(0, 255, 0, 0.05); border: 1px solid var(--accent); border-radius: 4px; font-size: 11px; }
+        .files-created a { color: var(--accent); text-decoration: none; margin-right: 12px; }
+        .files-created a:hover { text-decoration: underline; }
+        .typing-indicator { display: flex; gap: 4px; padding: 8px 0; }
+        .typing-indicator span { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: typing 1.4s infinite ease-in-out; }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+        
+        /* Input */
+        .input-area { padding: 16px 24px; background: var(--bg-secondary); border-top: 1px solid var(--border-color); }
+        .input-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+        .action-btn { padding: 6px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-secondary); font-size: 11px; cursor: pointer; transition: all 0.2s; }
+        .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .input-container { display: flex; gap: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; padding: 8px; }
+        .input-container textarea { flex: 1; background: transparent; border: none; color: var(--text-primary); font-family: inherit; font-size: 14px; resize: none; padding: 8px; max-height: 150px; line-height: 1.5; }
+        .input-container textarea:focus { outline: none; }
+        .send-btn { background: var(--accent); color: var(--bg-primary); border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; }
+        .modal-header { font-size: 18px; color: var(--accent); margin-bottom: 16px; }
+        .modal-body { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+        .modal-footer { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+        .modal-btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color); }
+        .modal-btn.primary { background: var(--accent); color: var(--bg-primary); border-color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    \ud83d\ude80 Terminal AI
+                    <span class="version">V2.0</span>
+                </div>
+            </div>
+            <button class="new-chat-btn" onclick="createChat()">\u2795 Novo Chat</button>
+            <div class="chat-list" id="chatList"></div>
+            <div class="stats" id="stats">
+                <div class="stats-item"><span>\ud83d\udd11 Chaves:</span><span id="keysCount">-</span></div>
+                <div class="stats-item"><span>\ud83d\udd04 Chave atual:</span><span id="currentKey">-</span></div>
+                <div class="stats-item"><span>\ud83d\udcca Uso total:</span><span id="totalUsage">-</span></div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="messages-area" id="messagesArea"></div>
+            <div class="input-area">
+                <div class="input-actions">
+                    <button class="action-btn" onclick="document.getElementById('fileInput').click()">\ud83d\udcce Upload Arquivo</button>
+                    <button class="action-btn" onclick="document.getElementById('imageInput').click()">\ud83d\uddbc\ufe0f Upload Imagem</button>
+                    <button class="action-btn" onclick="viewFiles()">\ud83d\udcc1 Ver Arquivos</button>
+                    <input type="file" id="fileInput" style="display:none" onchange="uploadFile(event)">
+                    <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="uploadImage(event)">
+                </div>
+                <div class="input-container">
+                    <textarea id="messageInput" placeholder="Digite um comando ou pergunta..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+                    <button class="send-btn" onclick="sendMessage()" id="sendBtn">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="filesModal">
+        <div class="modal-content">
+            <div class="modal-header">\ud83d\udcc1 Arquivos na Sandbox</div>
+            <div class="modal-body" id="filesModalBody">Carregando...</div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 🔧 CONFIGURE A URL DO SEU BACKEND AQUI:
+        // Para uso local: 'http://localhost:8001/api'
+        // Para ngrok: cole sua URL do ngrok aqui
+        const API_URL = 'http://localhost:8001/api';
+        let chats = []; 
+        let activeChat = null; 
+        let messages = []; 
+        let loading = false;
+        let uploadedImage = null;
+        
+        async function fetchChats() {
+            try { 
+                const response = await fetch(`${API_URL}/chats`);
+                if (!response.ok) throw new Error('Erro ao buscar chats');
+                chats = await response.json(); 
+                renderChatList(); 
+            } catch (e) { 
+                console.error('Erro:', e);
+            }
+        }
+        
+        async function fetchStats() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                document.getElementById('keysCount').textContent = data.gemini_keys || 0;
+                document.getElementById('currentKey').textContent = data.current_key || 0;
+                const totalUsage = Object.values(data.key_usage || {}).reduce((a, b) => a + b, 0);
+                document.getElementById('totalUsage').textContent = totalUsage;
+            } catch (e) {
+                console.error('Erro ao buscar stats:', e);
+            }
+        }
+        
+        async function createChat() {
+            try {
+                const name = `Chat ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                const response = await fetch(`${API_URL}/chats`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ name }) 
+                });
+                if (!response.ok) throw new Error('Erro ao criar chat');
+                const newChat = await response.json();
+                chats.unshift(newChat); 
+                activeChat = newChat; 
+                messages = [];
+                renderChatList(); 
+                renderMessages();
+            } catch (e) { 
+                console.error('Erro:', e);
+            }
+        }
+        
+        async function selectChat(chatId) {
+            try {
+                const response = await fetch(`${API_URL}/chats/${chatId}`);
+                if (!response.ok) throw new Error('Erro');
+                activeChat = await response.json(); 
+                messages = activeChat.messages || [];
+                renderChatList(); 
+                renderMessages();
+            } catch (e) { 
+                console.error('Erro:', e);
+            }
+        }
+        
+        async function deleteChat(chatId, event) {
+            event.stopPropagation();
+            if (!confirm('Deletar este chat?')) return;
+            try {
+                await fetch(`${API_URL}/chats/${chatId}`, { method: 'DELETE' });
+                chats = chats.filter(c => c.id !== chatId);
+                if (activeChat?.id === chatId) { 
+                    activeChat = null; 
+                    messages = []; 
+                }
+                renderChatList(); 
+                renderMessages();
+            } catch (e) { 
+                console.error('Erro:', e);
+            }
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            
+            if (!content || !activeChat || loading) return;
+            
+            input.value = ''; 
+            loading = true; 
+            document.getElementById('sendBtn').disabled = true;
+            
+            const tempUserMsg = {
+                id: `temp-${Date.now()}`,
+                role: 'user',
+                content: content,
+                timestamp: new Date().toISOString()
+            };
+            messages.push(tempUserMsg);
+            renderMessages();
+            
+            try {
+                const payload = {
+                    content: content,
+                    chat_id: activeChat.id
+                };
+                
+                if (uploadedImage) {
+                    payload.image = uploadedImage;
+                }
+                
+                const response = await fetch(`${API_URL}/message`, {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error('Erro');
+                
+                const data = await response.json();
+                
+                messages = messages.filter(m => m.id !== tempUserMsg.id);
+                messages.push(data.user_message);
+                messages.push(data.assistant_message);
+                
+                uploadedImage = null;
+                renderMessages();
+                fetchStats();
+                
+            } catch (e) {
+                console.error('Erro:', e);
+                messages = messages.filter(m => m.id !== tempUserMsg.id);
+                messages.push({ 
+                    id: `error-${Date.now()}`, 
+                    role: 'assistant', 
+                    content: '\u274c Erro ao processar. Tente novamente.', 
+                    timestamp: new Date().toISOString() 
+                });
+                renderMessages();
+            } finally { 
+                loading = false; 
+                document.getElementById('sendBtn').disabled = false; 
+            }
+        }
+        
+        function handleKeyDown(event) { 
+            if (event.key === 'Enter' && !event.shiftKey) { 
+                event.preventDefault(); 
+                sendMessage(); 
+            } 
+        }
+        
+        async function uploadFile(event) {
+            const file = event.target.files[0];
+            if (!file || !activeChat) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`${API_URL}/upload?chat_id=${activeChat.id}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                alert(`\u2713 ${data.message}`);
+            } catch (e) {
+                alert('\u274c Erro no upload');
+            }
+        }
+        
+        async function uploadImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImage = e.target.result.split(',')[1];
+                alert('\u2713 Imagem carregada! Envie sua mensagem.');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        async function viewFiles() {
+            try {
+                const response = await fetch(`${API_URL}/files`);
+                const data = await response.json();
+                const filesHtml = data.files.map(f => 
+                    `<div>\ud83d\udcc4 ${f.name} (${(f.size / 1024).toFixed(1)} KB)</div>`
+                ).join('');
+                document.getElementById('filesModalBody').innerHTML = filesHtml || 'Nenhum arquivo';
+                document.getElementById('filesModal').classList.add('show');
+            } catch (e) {
+                alert('\u274c Erro ao listar arquivos');
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('filesModal').classList.remove('show');
+        }
+        
+        function copyCode(text) {
+            navigator.clipboard.writeText(text);
+            alert('\u2713 C\u00f3digo copiado!');
+        }
+        
+        function renderChatList() {
+            const chatList = document.getElementById('chatList');
+            if (chats.length === 0) {
+                chatList.innerHTML = '<div style=\"padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px;\">Nenhum chat</div>';
+                return;
+            }
+            chatList.innerHTML = chats.map(chat => 
+                `<div class=\"chat-item ${activeChat?.id === chat.id ? 'active' : ''}\" onclick=\"selectChat('${chat.id}')\">
+                    <span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;\">${chat.name}</span>
+                    <button class=\"delete-btn\" onclick=\"deleteChat('${chat.id}', event)\">\ud83d\uddd1\ufe0f</button>
+                </div>`
+            ).join('');
+        }
+        
+        function renderMessages() {
+            const messagesArea = document.getElementById('messagesArea');
+            
+            if (!activeChat) {
+                messagesArea.innerHTML = `
+                    <div class=\"welcome-message\">
+                        <h2>\ud83d\ude80 Terminal AI V2</h2>
+                        <p class=\"subtitle\">Assistente Avan\u00e7ado de Terminal Linux com IA</p>
+                        <div class=\"features\">
+                            <div class=\"feature-card\">
+                                <h3>\ud83d\udee0\ufe0f Execu\u00e7\u00e3o Real</h3>
+                                <p>Comandos executados de verdade na sandbox</p>
+                            </div>
+                            <div class=\"feature-card\">
+                                <h3>\ud83d\udcc1 Criar Arquivos</h3>
+                                <p>Cria arquivos HTML, Python, JS e mais</p>
+                            </div>
+                            <div class=\"feature-card\">
+                                <h3>\ud83d\uddbc\ufe0f An\u00e1lise de Imagens</h3>
+                                <p>Envia imagens para an\u00e1lise da IA</p>
+                            </div>
+                            <div class=\"feature-card\">
+                                <h3>\ud83d\udd11 M\u00faltiplas Chaves</h3>
+                                <p>Rota\u00e7\u00e3o autom\u00e1tica entre chaves</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (messages.length === 0 && !loading) {
+                messagesArea.innerHTML = '<div class=\"welcome-message\"><h2>\ud83d\udcac Novo Chat</h2><p>Digite um comando ou pergunta abaixo</p></div>';
+                return;
+            }
+            
+            let html = '';
+            
+            messages.forEach(msg => {
+                const roleLabel = msg.role === 'user' ? '\ud83d\udc64 Voc\u00ea' : '\ud83e\udd16 Terminal AI';
+                let content = msg.content || '';
+                
+                html += `
+                    <div class=\"message ${msg.role}\">
+                        <div class=\"message-role\">${roleLabel}</div>
+                        ${msg.role === 'assistant' ? '<button class=\"copy-code-btn\" onclick=\"copyCode(`' + content.replace(/`/g, '\\\\`') + '`)\">\ud83d\udccb Copiar</button>' : ''}
+                        <div class=\"message-content\">${content}</div>
+                        ${msg.output ? `<div class=\"command-output\"><strong>\ud83d\udce4 Output:</strong><br>${msg.output}</div>` : ''}
+                        ${msg.files_created && msg.files_created.length > 0 ? `<div class=\"files-created\">\ud83c\udf89 Arquivos criados: ${msg.files_created.join(', ')}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            if (loading) {
+                html += '<div class=\"message assistant\"><div class=\"message-role\">\ud83e\udd16 Terminal AI</div><div class=\"typing-indicator\"><span></span><span></span><span></span></div></div>';
+            }
+            
+            messagesArea.innerHTML = html;
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+        
+        fetchChats();
+        fetchStats();
+        renderMessages();
+        setInterval(fetchStats, 10000);
+        
+        fetch(`${API_URL}/health`)
+            .then(r => r.json())
+            .then(data => console.log('\u2705 Backend conectado:', data))
+            .catch(e => console.error('\u274c Backend n\u00e3o conectado:', e));
+    </script>
+</body>
+</html>"}]

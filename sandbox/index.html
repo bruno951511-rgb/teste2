@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo do Quadrado Saltitante</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #222; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { border: 2px solid #555; background-color: #333; box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); }
+        h1 { color: #00FFFF; text-align: center; position: absolute; top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Jogo do Quadrado Saltitante</h1>
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let x = 50;
+        let y = 50;
+        let dx = 4; // Velocidade em x
+        let dy = 3; // Velocidade em y
+        const squareSize = 40;
+        const color = '#00FFFF'; // Ciano vibrante
+
+        function drawSquare() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpa o canvas
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            ctx.fillRect(x, y, squareSize, squareSize);
+            ctx.shadowBlur = 0;
+        }
+
+        function update() {
+            // Move o quadrado
+            x += dx;
+            y += dy;
+
+            // Rebate nas paredes
+            if (x + squareSize > canvas.width || x < 0) {
+                dx = -dx;
+            }
+            if (y + squareSize > canvas.height || y < 0) {
+                dy = -dy;
+            }
+
+            drawSquare();
+            requestAnimationFrame(update); // Loop de animação
+        }
+
+        // Inicia o loop do jogo
+        update();
+    </script>
+</body>
+</html>
